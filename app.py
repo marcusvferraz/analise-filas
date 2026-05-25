@@ -34,7 +34,7 @@ def detect():
 
     frame_num += 1
 
-    results = model.track(frame, classes=[0], persist=True, verbose=False, imgsz=320)
+    results = model.track(frame, classes=[0], persist=True, verbose=False)
 
     detections = []
     if results and results[0].boxes.id is not None:
