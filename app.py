@@ -8,6 +8,13 @@ from ultralytics import YOLO
 app = Flask(__name__)
 model = YOLO("yolov8n.pt")
 
+LINHA_Y = 0.6
+track_history = {}
+entry_count = 0
+exit_count = 0
+ids_dentro = set()
+frame_num = 0
+
 
 @app.route("/")
 def index():
@@ -16,21 +23,55 @@ def index():
 
 @app.route("/detect", methods=["POST"])
 def detect():
+    global entry_count, exit_count, ids_dentro, track_history, frame_num
+
     data = request.get_json()
     img_bytes = base64.b64decode(data["image"].split(",")[1])
     nparr = np.frombuffer(img_bytes, np.uint8)
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    h, w = frame.shape[:2]
+    linha_y = int(h * LINHA_Y)
 
-    results = model(frame, classes=[0])
+    frame_num += 1
+
+    results = model.track(frame, classes=[0], persist=True, verbose=False)
 
     detections = []
-    for r in results:
-        for box in r.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            conf = float(box.conf[0])
-            detections.append({"x1": x1, "y1": y1, "x2": x2, "y2": y2, "conf": round(conf, 2)})
+    if results and results[0].boxes.id is not None:
+        boxes = results[0].boxes
+        for i in range(len(boxes)):
+            track_id = int(boxes.id[i].item())
+            x1, y1, x2, y2 = map(int, boxes.xyxy[i])
+            conf = float(boxes.conf[i].item())
+            cx = (x1 + x2) // 2
+            cy = (y1 + y2) // 2
 
-    return jsonify({"count": len(detections), "boxes": detections})
+            if track_id in track_history:
+                prev_y = track_history[track_id]
+                if prev_y < linha_y and cy >= linha_y:
+                    entry_count += 1
+                    ids_dentro.add(track_id)
+                elif prev_y >= linha_y and cy < linha_y:
+                    exit_count += 1
+                    ids_dentro.discard(track_id)
+
+            track_history[track_id] = cy
+            detections.append({
+                "id": track_id,
+                "x1": x1, "y1": y1, "x2": x2, "y2": y2,
+                "conf": round(conf, 2),
+            })
+
+    # Clean stale tracks
+    active = {d["id"] for d in detections}.union(ids_dentro)
+    track_history = {k: v for k, v in track_history.items() if k in active}
+
+    return jsonify({
+        "count": len(ids_dentro),
+        "boxes": detections,
+        "entradas": entry_count,
+        "saidas": exit_count,
+    })
 
 
 if __name__ == "__main__":
