@@ -96,6 +96,7 @@
         let stream = null;
         let sending = false;
         let animFrame = null;
+        let frameCount = 0;
 
         video.style.transform = "scaleX(-1)";
 
@@ -104,6 +105,13 @@
                 animFrame = requestAnimationFrame(sendFrame);
                 return;
             }
+            frameCount++;
+
+            if (frameCount % 2 === 0) {
+                animFrame = requestAnimationFrame(sendFrame);
+                return;
+            }
+
             const temp = document.createElement("canvas");
             temp.width = video.videoWidth;
             temp.height = video.videoHeight;

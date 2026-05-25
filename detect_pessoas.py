@@ -17,6 +17,11 @@ def main():
         print("Erro ao abrir a fonte de vídeo")
         return
 
+    skip = 2
+    frame_count = 0
+    last_boxes = []
+    num_pessoas = 0
+
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -25,17 +30,22 @@ def main():
         display = cv2.flip(frame, 1)
         h, w = frame.shape[:2]
 
-        results = model(frame, classes=[0])  # classe 0 = pessoa no COCO
+        frame_count += 1
+        if frame_count % skip == 0:
+            results = model(frame, classes=[0])
 
-        num_pessoas = 0
-        for r in results:
-            for box in r.boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                conf = box.conf[0].item()
-                cv2.rectangle(display, (w - x1, y1), (w - x2, y2), (0, 255, 0), 2)
-                cv2.putText(display, f"{conf:.2f}", (w - x1, y1 - 5),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                num_pessoas += 1
+            last_boxes = []
+            for r in results:
+                for box in r.boxes:
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    conf = box.conf[0].item()
+                    last_boxes.append((x1, y1, x2, y2, conf))
+            num_pessoas = len(last_boxes)
+
+        for x1, y1, x2, y2, conf in last_boxes:
+            cv2.rectangle(display, (w - x1, y1), (w - x2, y2), (0, 255, 0), 2)
+            cv2.putText(display, f"{conf:.2f}", (w - x1, y1 - 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
         cv2.putText(display, f"Pessoas: {num_pessoas}", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
