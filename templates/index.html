@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise de Filas</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a1a;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { margin-bottom: 10px; font-size: 24px; }
+        #status { margin-bottom: 15px; color: #aaa; font-size: 14px; }
+        .video-container {
+            position: relative;
+            width: 640px;
+            max-width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        video, canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #counter {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 10;
+        }
+        #counter .num { color: #ff4444; }
+        .info {
+            margin-top: 12px;
+            color: #888;
+            font-size: 13px;
+            text-align: center;
+        }
+        .controls { margin-top: 15px; }
+        button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        #startBtn { background: #22c55e; color: #fff; }
+        #stopBtn { background: #ef4444; color: #fff; display: none; }
+        button:hover { opacity: 0.85; }
+    </style>
+</head>
+<body>
+    <h1>Análise de Filas</h1>
+    <div id="status">Conectando ao servidor...</div>
+
+    <div class="video-container">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div id="counter">Pessoas: <span class="num" id="count">0</span></div>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn" disabled>Iniciar Webcam</button>
+        <button id="stopBtn">Parar</button>
+    </div>
+    <p class="info">Apenas frames individuais são enviados ao servidor para processamento</p>
+
+    <script>
+        const socket = io();
+
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("overlay");
+        const ctx = canvas.getContext("2d");
+        const countEl = document.getElementById("count");
+        const statusEl = document.getElementById("status");
+        const startBtn = document.getElementById("startBtn");
+        const stopBtn = document.getElementById("stopBtn");
+
+        let stream = null;
+        let sending = false;
+        let animFrame = null;
+
+        socket.on("connect", () => {
+            statusEl.textContent = "Conectado ao servidor";
+            startBtn.disabled = false;
+        });
+
+        socket.on("disconnect", () => {
+            statusEl.textContent = "Desconectado do servidor";
+            startBtn.disabled = true;
+        });
+
+        socket.on("detections", (data) => {
+            countEl.textContent = data.count;
+            drawBoxes(data.boxes, video.videoWidth, video.videoHeight);
+        });
+
+        function drawBoxes(boxes, vw, vh) {
+            const rect = video.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const scaleX = canvas.width / vw;
+            const scaleY = canvas.height / vh;
+
+            for (const b of boxes) {
+                const x1 = b.x1 * scaleX;
+                const y1 = b.y1 * scaleY;
+                const x2 = b.x2 * scaleX;
+                const y2 = b.y2 * scaleY;
+                ctx.strokeStyle = "#22c55e";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+                ctx.fillStyle = "rgba(34,197,94,0.2)";
+                ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+                ctx.fillStyle = "#22c55e";
+                ctx.font = "12px Arial";
+                ctx.fillText(b.conf, x1, y1 - 4);
+            }
+        }
+
+        function sendFrame() {
+            if (!sending) return;
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = video.videoWidth;
+            tempCanvas.height = video.videoHeight;
+            const tempCtx = tempCanvas.getContext("2d");
+            tempCtx.drawImage(video, 0, 0);
+            const dataUrl = tempCanvas.toDataURL("image/jpeg", 0.7);
+            socket.emit("frame", dataUrl);
+            animFrame = requestAnimationFrame(sendFrame);
+        }
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                await video.play();
+                statusEl.textContent = "Webcam ativa";
+                startBtn.style.display = "none";
+                stopBtn.style.display = "inline-block";
+                sending = true;
+                sendFrame();
+            } catch (err) {
+                statusEl.textContent = "Erro ao acessar webcam: " + err.message;
+            }
+        }
+
+        function stopCamera() {
+            sending = false;
+            if (animFrame) cancelAnimationFrame(animFrame);
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
+            video.srcObject = null;
+            statusEl.textContent = "Webcam parada";
+            startBtn.style.display = "inline-block";
+            stopBtn.style.display = "none";
+            countEl.textContent = "0";
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        startBtn.addEventListener("click", startCamera);
+        stopBtn.addEventListener("click", stopCamera);
+    </script>
+</body>
+</html>
