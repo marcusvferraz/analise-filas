@@ -1,6 +1,7 @@
 import cv2
 from ultralytics import YOLO
 import argparse
+from datetime import datetime
 
 TEMPO_POR_PESSOA = 2  # minutos estimados por pessoa na fila
 LIMIAR_PEQUENA = 3
@@ -19,14 +20,18 @@ def get_status(qtd):
 
 def draw_overlay(frame, num_pessoas, tempo_est):
     h, w = frame.shape[:2]
+    agora = datetime.now().strftime("%H:%M:%S")
     status, cor_status = get_status(num_pessoas)
 
     overlay = frame.copy()
-    cv2.rectangle(overlay, (0, 0), (w, 110), (0, 0, 0), -1)
+    cv2.rectangle(overlay, (0, 0), (w, 130), (0, 0, 0), -1)
     frame = cv2.addWeighted(overlay, 0.6, frame, 0.4, 0)
 
     cv2.putText(frame, "ANALISE DE FILAS", (20, 30),
                 cv2.FONT_HERSHEY_DUPLEX, 0.7, (255, 255, 255), 1)
+
+    cv2.putText(frame, agora, (w - 120, 30),
+                cv2.FONT_HERSHEY_DUPLEX, 0.6, (180, 180, 180), 1)
 
     cv2.putText(frame, f"Pessoas: {num_pessoas}  |  Tempo estimado: {tempo_est}min",
                 (20, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1)

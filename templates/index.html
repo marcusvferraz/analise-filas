@@ -127,6 +127,10 @@
             <span class="info-value" id="time-est">0 min</span>
         </div>
         <div class="info-item">
+            <span class="info-label">Horário</span>
+            <span class="info-value" id="clock">--:--:--</span>
+        </div>
+        <div class="info-item">
             <span class="info-label">Status</span>
             <span id="status-badge" style="background:#333;color:#999;">—</span>
         </div>
@@ -150,7 +154,12 @@
         const timeEl = document.getElementById("time-est");
         const badgeEl = document.getElementById("status-badge");
         const statusMsg = document.getElementById("status-msg");
+        const clockEl = document.getElementById("clock");
         const startBtn = document.getElementById("startBtn");
+
+        setInterval(() => {
+            clockEl.textContent = new Date().toLocaleTimeString("pt-BR");
+        }, 1000);
         const stopBtn = document.getElementById("stopBtn");
 
         let stream = null;
@@ -194,13 +203,21 @@
             }
 
             const barW = canvas.width;
-            const barH = 90;
+            const barH = 110;
             ctx.fillStyle = "rgba(0,0,0,0.55)";
             ctx.fillRect(0, 0, barW, barH);
+
+            const agora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
             ctx.fillStyle = "#fff";
             ctx.font = "bold 14px 'Segoe UI', Arial";
             ctx.fillText("ANÁLISE DE FILAS", 14, 24);
+
+            ctx.fillStyle = "#999";
+            ctx.font = "11px 'Segoe UI', Arial";
+            ctx.textAlign = "right";
+            ctx.fillText(agora, canvas.width - 14, 24);
+            ctx.textAlign = "left";
 
             ctx.fillStyle = "#bbb";
             ctx.font = "11px 'Segoe UI', Arial";
