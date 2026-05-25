@@ -22,23 +22,25 @@ def main():
         if not ret:
             break
 
+        display = cv2.flip(frame, 1)
+        h, w = frame.shape[:2]
+
         results = model(frame, classes=[0])  # classe 0 = pessoa no COCO
 
+        num_pessoas = 0
         for r in results:
-            boxes = r.boxes
-            for box in boxes:
+            for box in r.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 conf = box.conf[0].item()
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(frame, f"{conf:.2f}", (x1, y1 - 5),
+                cv2.rectangle(display, (w - x1, y1), (w - x2, y2), (0, 255, 0), 2)
+                cv2.putText(display, f"{conf:.2f}", (w - x1, y1 - 5),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                num_pessoas += 1
 
-        num_pessoas = len(results[0].boxes) if results else 0
-
-        cv2.putText(frame, f"Pessoas: {num_pessoas}", (10, 30),
+        cv2.putText(display, f"Pessoas: {num_pessoas}", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
-        cv2.imshow("Analise de Filas - Pressione 'q' para sair", frame)
+        cv2.imshow("Analise de Filas - Pressione 'q' para sair", display)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
