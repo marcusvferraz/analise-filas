@@ -226,7 +226,7 @@
             }
         }
 
-        async function sendFrame() {
+        function sendFrame() {
             if (!sending || !video.videoWidth) {
                 animFrame = requestAnimationFrame(sendFrame);
                 return;
@@ -244,30 +244,27 @@
             tctx.drawImage(video, 0, 0);
             const dataUrl = temp.toDataURL("image/jpeg", 0.5);
 
-            try {
-                const res = await fetch("/detect", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ image: dataUrl }),
-                });
-                const data = await res.json();
-                const num = data.count || 0;
+            animFrame = requestAnimationFrame(sendFrame);
 
+            fetch("/detect", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: dataUrl }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                const num = data.count || 0;
                 countEl.textContent = num;
                 entradasEl.textContent = data.entradas || 0;
                 saidasEl.textContent = data.saidas || 0;
                 timeEl.textContent = (num * TEMPO_POR_PESSOA) + " min";
-
                 const status = getStatus(num);
                 badgeEl.textContent = status.label.toUpperCase();
                 badgeEl.style.color = status.color;
                 badgeEl.style.background = status.bg;
-
                 drawOverlay(data, video.videoWidth, video.videoHeight);
-            } catch (err) {
-                console.error(err);
-            }
-            animFrame = requestAnimationFrame(sendFrame);
+            })
+            .catch(err => console.error(err));
         }
 
         async function startCamera() {
