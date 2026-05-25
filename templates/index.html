@@ -176,7 +176,6 @@
         let sending = false;
         let animFrame = null;
         let frameCount = 0;
-        let lastBoxes = [];
 
         video.style.transform = "scaleX(-1)";
 
@@ -191,13 +190,7 @@
             return { label: "Fila lotada", color: "#ef4444", bg: "rgba(239,68,68,0.15)" };
         }
 
-        function render() {
-            if (!video.videoWidth) {
-                animFrame = requestAnimationFrame(render);
-                return;
-            }
-            const vw = video.videoWidth;
-            const vh = video.videoHeight;
+        function drawOverlay(data, vw, vh) {
             const rect = video.getBoundingClientRect();
             canvas.width = rect.width;
             canvas.height = rect.height;
@@ -206,7 +199,8 @@
             const sx = canvas.width / vw;
             const sy = canvas.height / vh;
 
-            const linha_x = vw * (1 - LINHA_X) * sx;
+            // Vertical virtual line (mirrored)
+            const linha_x = data.linha_x != null ? (vw - data.linha_x) * sx : vw * (1 - LINHA_X) * sx;
             ctx.strokeStyle = "#ffff00";
             ctx.lineWidth = 2;
             ctx.setLineDash([8, 4]);
@@ -219,7 +213,9 @@
             ctx.font = "10px Arial";
             ctx.fillText("LINHA VIRTUAL", linha_x + 6, 14);
 
-            for (const b of lastBoxes) {
+            // Boxes
+            const boxes = data.boxes || [];
+            for (const b of boxes) {
                 const x1 = (vw - b.x1) * sx;
                 const y1 = b.y1 * sy;
                 const x2 = (vw - b.x2) * sx;
@@ -228,46 +224,50 @@
                 ctx.lineWidth = 2;
                 ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
             }
-
-            animFrame = requestAnimationFrame(render);
         }
 
-        function sendFrame() {
-            if (!sending || !video.videoWidth) return;
-
+        async function sendFrame() {
+            if (!sending || !video.videoWidth) {
+                animFrame = requestAnimationFrame(sendFrame);
+                return;
+            }
             frameCount++;
-            if (frameCount % 3 !== 0) return;
+            if (frameCount % 3 === 0) {
+                animFrame = requestAnimationFrame(sendFrame);
+                return;
+            }
 
             const temp = document.createElement("canvas");
-            temp.width = video.videoWidth;
-            temp.height = video.videoHeight;
+            temp.width = 640;
+            temp.height = 480;
             const tctx = temp.getContext("2d");
-            tctx.drawImage(video, 0, 0);
+            tctx.drawImage(video, 0, 0, 640, 480);
             const dataUrl = temp.toDataURL("image/jpeg", 0.5);
 
-            fetch("/detect", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ image: dataUrl }),
-            })
-            .then(res => res.json())
-            .then(data => {
-                lastBoxes = data.boxes || [];
+            try {
+                const res = await fetch("/detect", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: dataUrl }),
+                });
+                const data = await res.json();
                 const num = data.count || 0;
+
                 countEl.textContent = num;
                 entradasEl.textContent = data.entradas || 0;
                 saidasEl.textContent = data.saidas || 0;
                 timeEl.textContent = (num * TEMPO_POR_PESSOA) + " min";
+
                 const status = getStatus(num);
                 badgeEl.textContent = status.label.toUpperCase();
                 badgeEl.style.color = status.color;
                 badgeEl.style.background = status.bg;
-                statusMsg.textContent = "Webcam ativa — monitorando";
-            })
-            .catch(err => {
+
+                drawOverlay(data, video.videoWidth, video.videoHeight);
+            } catch (err) {
                 console.error(err);
-                statusMsg.textContent = "Erro de conexão com o servidor";
-            });
+            }
+            animFrame = requestAnimationFrame(sendFrame);
         }
 
         async function startCamera() {
@@ -279,9 +279,6 @@
                 startBtn.style.display = "none";
                 stopBtn.style.display = "inline-block";
                 sending = true;
-                frameCount = 0;
-                lastBoxes = [];
-                render();
                 sendFrame();
             } catch (err) {
                 statusMsg.textContent = "Erro ao acessar webcam: " + err.message;
@@ -296,7 +293,6 @@
                 stream = null;
             }
             video.srcObject = null;
-            lastBoxes = [];
             statusMsg.textContent = "Webcam parada";
             startBtn.style.display = "inline-block";
             stopBtn.style.display = "none";

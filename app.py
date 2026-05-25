@@ -34,7 +34,7 @@ def detect():
 
     frame_num += 1
 
-    results = model.track(frame, classes=[0], persist=True, verbose=False)
+    results = model.track(frame, classes=[0], persist=True, verbose=False, imgsz=480)
 
     detections = []
     if results and results[0].boxes.id is not None:
@@ -61,15 +61,9 @@ def detect():
                 "conf": round(conf, 2),
             })
 
-    # Rebuild ids_dentro from currently visible people on the inside
-    ids_dentro = set()
-    for d in detections:
-        cx = (d["x1"] + d["x2"]) // 2
-        if cx >= linha_x:
-            ids_dentro.add(d["id"])
-
     # Clean stale tracks
-    track_history = {k: v for k, v in track_history.items() if k in {d["id"] for d in detections}}
+    active = {d["id"] for d in detections}.union(ids_dentro)
+    track_history = {k: v for k, v in track_history.items() if k in active}
 
     return jsonify({
         "count": len(ids_dentro),
