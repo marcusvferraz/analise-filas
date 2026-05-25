@@ -86,7 +86,7 @@
     <p class="info">Apenas frames individuais são enviados ao servidor para processamento</p>
 
     <script>
-        const socket = io();
+        const socket = io({ transports: ["websocket", "polling"] });
 
         const video = document.getElementById("video");
         const canvas = document.getElementById("overlay");
@@ -112,7 +112,9 @@
 
         socket.on("detections", (data) => {
             countEl.textContent = data.count;
-            drawBoxes(data.boxes, video.videoWidth, video.videoHeight);
+            if (video.videoWidth && video.videoHeight) {
+                drawBoxes(data.boxes, video.videoWidth, video.videoHeight);
+            }
         });
 
         function drawBoxes(boxes, vw, vh) {
@@ -121,6 +123,7 @@
             canvas.height = rect.height;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            if (!boxes || boxes.length === 0) return;
             const scaleX = canvas.width / vw;
             const scaleY = canvas.height / vh;
 
@@ -141,7 +144,7 @@
         }
 
         function sendFrame() {
-            if (!sending) return;
+            if (!sending || !video.videoWidth) return;
             const tempCanvas = document.createElement("canvas");
             tempCanvas.width = video.videoWidth;
             tempCanvas.height = video.videoHeight;
