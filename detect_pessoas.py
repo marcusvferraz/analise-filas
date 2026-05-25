@@ -94,6 +94,16 @@ def main():
 
                     track_history[track_id] = cx
 
+        # Rebuild ids_dentro from currently visible people on the inside
+        ids_dentro = set()
+        if results and results[0].boxes.id is not None:
+            for box, tid in zip(results[0].boxes.xyxy, results[0].boxes.id):
+                track_id = int(tid.item())
+                x1, y1, x2, y2 = map(int, box.tolist())
+                cx = (x1 + x2) // 2
+                if cx >= linha_x:
+                    ids_dentro.add(track_id)
+
         num_pessoas = len(ids_dentro)
         tempo_est = num_pessoas * TEMPO_POR_PESSOA
 

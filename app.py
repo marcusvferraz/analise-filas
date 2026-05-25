@@ -61,9 +61,15 @@ def detect():
                 "conf": round(conf, 2),
             })
 
+    # Rebuild ids_dentro from currently visible people on the inside
+    ids_dentro = set()
+    for d in detections:
+        cx = (d["x1"] + d["x2"]) // 2
+        if cx >= linha_x:
+            ids_dentro.add(d["id"])
+
     # Clean stale tracks
-    active = {d["id"] for d in detections}.union(ids_dentro)
-    track_history = {k: v for k, v in track_history.items() if k in active}
+    track_history = {k: v for k, v in track_history.items() if k in {d["id"] for d in detections}}
 
     return jsonify({
         "count": len(ids_dentro),
