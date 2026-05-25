@@ -157,7 +157,7 @@
         const TEMPO_POR_PESSOA = 2;
         const LIMIAR_PEQUENA = 3;
         const LIMIAR_MEDIA = 6;
-        const LINHA_Y = 0.6;
+        const LINHA_X = 0.5;
 
         const video = document.getElementById("video");
         const canvas = document.getElementById("overlay");
@@ -198,69 +198,32 @@
 
             const sx = canvas.width / vw;
             const sy = canvas.height / vh;
-            const linha_y = vh * LINHA_Y;
 
-            // Virtual line
-            const ly = linha_y * sy;
+            // Vertical virtual line (mirrored)
+            const linha_x = data.linha_x != null ? (vw - data.linha_x) * sx : vw * (1 - LINHA_X) * sx;
             ctx.strokeStyle = "#ffff00";
             ctx.lineWidth = 2;
             ctx.setLineDash([8, 4]);
             ctx.beginPath();
-            ctx.moveTo(0, ly);
-            ctx.lineTo(canvas.width, ly);
+            ctx.moveTo(linha_x, 0);
+            ctx.lineTo(linha_x, canvas.height);
             ctx.stroke();
             ctx.setLineDash([]);
             ctx.fillStyle = "#ffff00";
             ctx.font = "10px Arial";
-            ctx.fillText("LINHA VIRTUAL", 8, ly - 6);
+            ctx.fillText("LINHA VIRTUAL", linha_x + 6, 14);
 
+            // Boxes
             const boxes = data.boxes || [];
             for (const b of boxes) {
                 const x1 = (vw - b.x1) * sx;
                 const y1 = b.y1 * sy;
                 const x2 = (vw - b.x2) * sx;
                 const y2 = b.y2 * sy;
-                const color = b.em_fila ? "#22c55e" : "#888";
-                ctx.strokeStyle = color;
+                ctx.strokeStyle = "#22c55e";
                 ctx.lineWidth = 2;
                 ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-                ctx.fillStyle = color + "33";
-                ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
-                ctx.fillStyle = color;
-                ctx.font = "bold 11px Arial";
-                ctx.fillText(`#${b.id}`, x1, y1 - 6);
             }
-
-            // Top bar
-            const agora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-            const num = data.count || 0;
-            ctx.fillStyle = "rgba(0,0,0,0.55)";
-            ctx.fillRect(0, 0, canvas.width, 110);
-
-            ctx.fillStyle = "#fff";
-            ctx.font = "bold 14px 'Segoe UI', Arial";
-            ctx.fillText("ANÁLISE DE FILAS", 14, 24);
-            ctx.fillStyle = "#999";
-            ctx.font = "11px 'Segoe UI', Arial";
-            ctx.textAlign = "right";
-            ctx.fillText(agora, canvas.width - 14, 24);
-            ctx.textAlign = "left";
-
-            ctx.fillStyle = "#bbb";
-            ctx.font = "11px 'Segoe UI', Arial";
-            ctx.fillText(`Na fila: ${num}  |  Ent: ${data.entradas || 0}  Sai: ${data.saidas || 0}  |  Tempo: ${num * TEMPO_POR_PESSOA}min`, 14, 44);
-
-            const status = getStatus(num);
-            ctx.fillStyle = status.color;
-            ctx.font = "bold 11px 'Segoe UI', Arial";
-            ctx.fillText(`Status: ${status.label}`, 14, 62);
-
-            const barX = 14, barY = 72, barW2 = Math.min(canvas.width - 28, 260), barH2 = 6;
-            const razao = Math.min(num / LIMIAR_MEDIA, 1);
-            ctx.fillStyle = "#333";
-            ctx.fillRect(barX, barY, barW2, barH2);
-            ctx.fillStyle = status.color;
-            ctx.fillRect(barX, barY, barW2 * razao, barH2);
         }
 
         async function sendFrame() {

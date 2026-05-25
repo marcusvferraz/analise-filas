@@ -7,7 +7,7 @@ TEMPO_POR_PESSOA = 2
 LIMIAR_PEQUENA = 3
 LIMIAR_MEDIA = 6
 
-LINHA_Y = 0.6
+LINHA_X = 0.5
 track_history = {}
 entry_count = 0
 exit_count = 0
@@ -30,25 +30,14 @@ def draw_overlay(frame, num_pessoas, tempo_est):
     status, cor_status = get_status(num_pessoas)
 
     overlay = frame.copy()
-    cv2.rectangle(overlay, (0, 0), (w, 130), (0, 0, 0), -1)
-    frame = cv2.addWeighted(overlay, 0.6, frame, 0.4, 0)
+    cv2.rectangle(overlay, (0, 0), (w, 75), (0, 0, 0), -1)
+    frame = cv2.addWeighted(overlay, 0.5, frame, 0.5, 0)
 
-    cv2.putText(frame, "ANALISE DE FILAS", (20, 30),
-                cv2.FONT_HERSHEY_DUPLEX, 0.7, (255, 255, 255), 1)
+    cv2.putText(frame, f"Pessoas: {num_pessoas}  |  Tempo: {tempo_est}min  |  {status}",
+                (20, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.55, cor_status, 2)
 
-    cv2.putText(frame, agora, (w - 120, 30),
-                cv2.FONT_HERSHEY_DUPLEX, 0.6, (180, 180, 180), 1)
-
-    cv2.putText(frame, f"Pessoas: {num_pessoas}  |  Tempo estimado: {tempo_est}min",
-                (20, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1)
-
-    cv2.putText(frame, f"Status: {status}", (20, 80),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, cor_status, 2)
-
-    bar_x, bar_y, bar_w, bar_h = 20, 95, 200, 8
-    razao = min(num_pessoas / LIMIAR_MEDIA, 1.0)
-    cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_w, bar_y + bar_h), (60, 60, 60), -1)
-    cv2.rectangle(frame, (bar_x, bar_y), (int(bar_x + bar_w * razao), bar_y + bar_h), cor_status, -1)
+    cv2.putText(frame, agora, (w - 100, 28),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 180), 1)
 
     return frame
 
@@ -73,6 +62,7 @@ def main():
 
     skip = 2
     frame_count = 0
+    results = None
 
     while True:
         ret, frame = cap.read()
@@ -80,65 +70,50 @@ def main():
             break
 
         h, w = frame.shape[:2]
-        linha_y = int(h * LINHA_Y)
+        linha_x = int(w * LINHA_X)
         display = cv2.flip(frame, 1)
-        linha_y_flip = int(h * (1 - LINHA_Y))
 
         frame_count += 1
         if frame_count % skip == 0:
             results = model.track(frame, classes=[0], persist=True, verbose=False)
 
             if results and results[0].boxes.id is not None:
-                boxes = results[0].boxes
-                for i in range(len(boxes)):
-                    track_id = int(boxes.id[i].item())
-                    x1, y1, x2, y2 = map(int, boxes.xyxy[i])
-                    conf = boxes.conf[i].item()
+                for box, tid in zip(results[0].boxes.xyxy, results[0].boxes.id):
+                    track_id = int(tid.item())
+                    x1, y1, x2, y2 = map(int, box.tolist())
                     cx = (x1 + x2) // 2
-                    cy = (y1 + y2) // 2
 
                     if track_id in track_history:
-                        prev_y = track_history[track_id]
-                        if prev_y < linha_y and cy >= linha_y:
+                        prev_x = track_history[track_id]
+                        if prev_x < linha_x and cx >= linha_x:
                             entry_count += 1
                             ids_dentro.add(track_id)
-                        elif prev_y >= linha_y and cy < linha_y:
+                        elif prev_x >= linha_x and cx < linha_x:
                             exit_count += 1
                             ids_dentro.discard(track_id)
 
-                    track_history[track_id] = cy
-
-        # Clean old tracks
-        track_history = {k: v for k, v in track_history.items()
-                         if k in ids_dentro or
-                         any(boxes.id is not None and int(b.id) == k
-                             for r in [results] if r
-                             for boxes in [r.boxes] if boxes.id is not None
-                             for b in boxes)}
+                    track_history[track_id] = cx
 
         num_pessoas = len(ids_dentro)
         tempo_est = num_pessoas * TEMPO_POR_PESSOA
 
-        # Draw virtual line
-        cv2.line(display, (0, linha_y_flip), (w, linha_y_flip), (255, 255, 0), 2)
-        cv2.putText(display, "LINDA VIRTUAL", (10, linha_y_flip - 8),
+        # Draw vertical virtual line (mirrored)
+        linha_x_flip = w - linha_x
+        cv2.line(display, (linha_x_flip, 0), (linha_x_flip, h), (255, 255, 0), 2)
+        cv2.putText(display, "LINHA VIRTUAL", (linha_x_flip + 6, 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
 
         # Entry/exit counters
-        cv2.putText(display, f"Entradas: {entry_count}  Saidas: {exit_count}",
+        cv2.putText(display, f"E: {entry_count}  S: {exit_count}",
                     (10, h - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
         # Draw tracked boxes
         if results and results[0].boxes.id is not None:
-            for i in range(len(results[0].boxes)):
-                box = results[0].boxes[i]
-                track_id = int(box.id[i].item())
-                x1, y1, x2, y2 = map(int, box.xyxy[i])
-                conf = box.conf[i].item()
+            for box, tid in zip(results[0].boxes.xyxy, results[0].boxes.id):
+                track_id = int(tid.item())
+                x1, y1, x2, y2 = map(int, box.tolist())
                 color = (0, 255, 0) if track_id in ids_dentro else (100, 100, 100)
                 cv2.rectangle(display, (w - x1, y1), (w - x2, y2), color, 2)
-                cv2.putText(display, f"#{track_id}", (w - x1, y1 - 5),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
         display = draw_overlay(display, num_pessoas, tempo_est)
 

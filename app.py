@@ -8,7 +8,7 @@ from ultralytics import YOLO
 app = Flask(__name__)
 model = YOLO("yolov8n.pt")
 
-LINHA_Y = 0.6
+LINHA_X = 0.5
 track_history = {}
 entry_count = 0
 exit_count = 0
@@ -30,7 +30,7 @@ def detect():
     nparr = np.frombuffer(img_bytes, np.uint8)
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     h, w = frame.shape[:2]
-    linha_y = int(h * LINHA_Y)
+    linha_x = int(w * LINHA_X)
 
     frame_num += 1
 
@@ -44,18 +44,17 @@ def detect():
             x1, y1, x2, y2 = map(int, boxes.xyxy[i])
             conf = float(boxes.conf[i].item())
             cx = (x1 + x2) // 2
-            cy = (y1 + y2) // 2
 
             if track_id in track_history:
-                prev_y = track_history[track_id]
-                if prev_y < linha_y and cy >= linha_y:
+                prev_x = track_history[track_id]
+                if prev_x < linha_x and cx >= linha_x:
                     entry_count += 1
                     ids_dentro.add(track_id)
-                elif prev_y >= linha_y and cy < linha_y:
+                elif prev_x >= linha_x and cx < linha_x:
                     exit_count += 1
                     ids_dentro.discard(track_id)
 
-            track_history[track_id] = cy
+            track_history[track_id] = cx
             detections.append({
                 "id": track_id,
                 "x1": x1, "y1": y1, "x2": x2, "y2": y2,
@@ -71,6 +70,8 @@ def detect():
         "boxes": detections,
         "entradas": entry_count,
         "saidas": exit_count,
+        "linha_x": linha_x,
+        "frame_w": w,
     })
 
 
