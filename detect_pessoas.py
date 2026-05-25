@@ -75,7 +75,7 @@ def main():
 
         frame_count += 1
         if frame_count % skip == 0:
-            results = model.track(frame, classes=[0], persist=True, verbose=False)
+            results = model.track(frame, classes=[0], persist=True, verbose=False, imgsz=320)
 
             if results and results[0].boxes.id is not None:
                 for box, tid in zip(results[0].boxes.xyxy, results[0].boxes.id):

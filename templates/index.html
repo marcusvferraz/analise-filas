@@ -232,7 +232,7 @@
                 return;
             }
             frameCount++;
-            if (frameCount % 2 === 0) {
+            if (frameCount % 3 !== 0) {
                 animFrame = requestAnimationFrame(sendFrame);
                 return;
             }
@@ -242,7 +242,7 @@
             temp.height = video.videoHeight;
             const tctx = temp.getContext("2d");
             tctx.drawImage(video, 0, 0);
-            const dataUrl = temp.toDataURL("image/jpeg", 0.7);
+            const dataUrl = temp.toDataURL("image/jpeg", 0.5);
 
             try {
                 const res = await fetch("/detect", {
@@ -272,7 +272,7 @@
 
         async function startCamera() {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
                 video.srcObject = stream;
                 await video.play();
                 statusMsg.textContent = "Webcam ativa — monitorando";
