@@ -176,6 +176,7 @@
         let sending = false;
         let animFrame = null;
         let frameCount = 0;
+        let lastBoxes = [];
 
         video.style.transform = "scaleX(-1)";
 
@@ -190,7 +191,13 @@
             return { label: "Fila lotada", color: "#ef4444", bg: "rgba(239,68,68,0.15)" };
         }
 
-        function drawLine(vw, vh) {
+        function render() {
+            if (!video.videoWidth) {
+                animFrame = requestAnimationFrame(render);
+                return;
+            }
+            const vw = video.videoWidth;
+            const vh = video.videoHeight;
             const rect = video.getBoundingClientRect();
             canvas.width = rect.width;
             canvas.height = rect.height;
@@ -211,15 +218,8 @@
             ctx.fillStyle = "#ffff00";
             ctx.font = "10px Arial";
             ctx.fillText("LINHA VIRTUAL", linha_x + 6, 14);
-        }
 
-        function drawBoxes(data, vw, vh) {
-            const rect = video.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-            const sx = canvas.width / vw;
-            const sy = canvas.height / vh;
-            for (const b of data) {
+            for (const b of lastBoxes) {
                 const x1 = (vw - b.x1) * sx;
                 const y1 = b.y1 * sy;
                 const x2 = (vw - b.x2) * sx;
@@ -228,18 +228,15 @@
                 ctx.lineWidth = 2;
                 ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
             }
+
+            animFrame = requestAnimationFrame(render);
         }
 
         function sendFrame() {
-            if (!sending || !video.videoWidth) {
-                animFrame = requestAnimationFrame(sendFrame);
-                return;
-            }
+            if (!sending || !video.videoWidth) return;
+
             frameCount++;
-            if (frameCount % 3 !== 0) {
-                animFrame = requestAnimationFrame(sendFrame);
-                return;
-            }
+            if (frameCount % 3 !== 0) return;
 
             const temp = document.createElement("canvas");
             temp.width = video.videoWidth;
@@ -248,9 +245,6 @@
             tctx.drawImage(video, 0, 0);
             const dataUrl = temp.toDataURL("image/jpeg", 0.5);
 
-            drawLine(video.videoWidth, video.videoHeight);
-            animFrame = requestAnimationFrame(sendFrame);
-
             fetch("/detect", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -258,6 +252,7 @@
             })
             .then(res => res.json())
             .then(data => {
+                lastBoxes = data.boxes || [];
                 const num = data.count || 0;
                 countEl.textContent = num;
                 entradasEl.textContent = data.entradas || 0;
@@ -267,7 +262,7 @@
                 badgeEl.textContent = status.label.toUpperCase();
                 badgeEl.style.color = status.color;
                 badgeEl.style.background = status.bg;
-                drawBoxes(data.boxes || [], video.videoWidth, video.videoHeight);
+                statusMsg.textContent = "Webcam ativa — monitorando";
             })
             .catch(err => {
                 console.error(err);
@@ -284,6 +279,9 @@
                 startBtn.style.display = "none";
                 stopBtn.style.display = "inline-block";
                 sending = true;
+                frameCount = 0;
+                lastBoxes = [];
+                render();
                 sendFrame();
             } catch (err) {
                 statusMsg.textContent = "Erro ao acessar webcam: " + err.message;
@@ -298,6 +296,7 @@
                 stream = null;
             }
             video.srcObject = null;
+            lastBoxes = [];
             statusMsg.textContent = "Webcam parada";
             startBtn.style.display = "inline-block";
             stopBtn.style.display = "none";
