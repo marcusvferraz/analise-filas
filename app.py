@@ -10,7 +10,8 @@ import database as db
 app = Flask(__name__)
 model = YOLO("yolov8n.pt")
 
-LINHA_X = 0.5
+ENTRADA_X = 0.65
+SAIDA_X = 0.35
 track_history = {}
 entry_count = 0
 exit_count = 0
@@ -47,7 +48,8 @@ def detect():
     nparr = np.frombuffer(img_bytes, np.uint8)
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     h, w = frame.shape[:2]
-    linha_x = int(w * LINHA_X)
+    entrada_x = int(w * ENTRADA_X)
+    saida_x = int(w * SAIDA_X)
 
     frame_num += 1
 
@@ -64,11 +66,14 @@ def detect():
 
             if track_id in track_history:
                 prev_x = track_history[track_id]
-                if prev_x < linha_x and cx >= linha_x:
+                estava_dentro = saida_x <= prev_x <= entrada_x
+                esta_dentro = saida_x <= cx <= entrada_x
+
+                if not estava_dentro and esta_dentro:
                     entry_count += 1
                     ids_dentro.add(track_id)
                     pessoa_entrada[track_id] = time.time()
-                elif prev_x >= linha_x and cx < linha_x:
+                elif estava_dentro and not esta_dentro:
                     exit_count += 1
                     ids_dentro.discard(track_id)
                     if track_id in pessoa_entrada:
@@ -105,7 +110,8 @@ def detect():
         "boxes": detections,
         "entradas": entry_count,
         "saidas": exit_count,
-        "linha_x": linha_x,
+        "entrada_x": entrada_x,
+        "saida_x": saida_x,
         "frame_w": w,
         "tempo_real_medio": tempo_real_medio,
     })

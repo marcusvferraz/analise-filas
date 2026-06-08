@@ -7,7 +7,8 @@ TEMPO_POR_PESSOA = 2
 LIMIAR_PEQUENA = 3
 LIMIAR_MEDIA = 6
 
-LINHA_X = 0.5
+ENTRADA_X = 0.65
+SAIDA_X = 0.35
 track_history = {}
 entry_count = 0
 exit_count = 0
@@ -70,7 +71,8 @@ def main():
             break
 
         h, w = frame.shape[:2]
-        linha_x = int(w * LINHA_X)
+        entrada_x = int(w * ENTRADA_X)
+        saida_x = int(w * SAIDA_X)
         display = cv2.flip(frame, 1)
 
         frame_count += 1
@@ -85,10 +87,13 @@ def main():
 
                     if track_id in track_history:
                         prev_x = track_history[track_id]
-                        if prev_x < linha_x and cx >= linha_x:
+                        estava_dentro = saida_x <= prev_x <= entrada_x
+                        esta_dentro = saida_x <= cx <= entrada_x
+
+                        if not estava_dentro and esta_dentro:
                             entry_count += 1
                             ids_dentro.add(track_id)
-                        elif prev_x >= linha_x and cx < linha_x:
+                        elif estava_dentro and not esta_dentro:
                             exit_count += 1
                             ids_dentro.discard(track_id)
 
@@ -97,11 +102,17 @@ def main():
         num_pessoas = len(ids_dentro)
         tempo_est = num_pessoas * TEMPO_POR_PESSOA
 
-        # Draw vertical virtual line (mirrored)
-        linha_x_flip = w - linha_x
-        cv2.line(display, (linha_x_flip, 0), (linha_x_flip, h), (255, 255, 0), 2)
-        cv2.putText(display, "LINHA VIRTUAL", (linha_x_flip + 6, 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+        # Draw lines (mirrored)
+        entrada_x_flip = w - entrada_x
+        saida_x_flip = w - saida_x
+
+        cv2.line(display, (entrada_x_flip, 0), (entrada_x_flip, h), (0, 255, 0), 2)
+        cv2.putText(display, "ENTRADA", (entrada_x_flip + 6, 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+        cv2.line(display, (saida_x_flip, 0), (saida_x_flip, h), (0, 0, 255), 2)
+        cv2.putText(display, "SAIDA", (saida_x_flip + 6, 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
         # Entry/exit counters
         cv2.putText(display, f"E: {entry_count}  S: {exit_count}",
