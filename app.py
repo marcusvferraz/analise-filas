@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from flask import Flask, render_template, request, jsonify
 from ultralytics import YOLO
+import database as db
 
 app = Flask(__name__)
 model = YOLO("yolov8n.pt")
@@ -14,6 +15,15 @@ entry_count = 0
 exit_count = 0
 ids_dentro = set()
 frame_num = 0
+save_counter = 0
+
+try:
+    db.criar_tabela()
+    db_disponivel = True
+    print("[DB] MySQL conectado - analise_filas pronto")
+except Exception as e:
+    db_disponivel = False
+    print(f"[DB] MySQL indisponivel: {e}")
 
 
 @app.route("/")
@@ -23,7 +33,7 @@ def index():
 
 @app.route("/detect", methods=["POST"])
 def detect():
-    global entry_count, exit_count, ids_dentro, track_history, frame_num
+    global entry_count, exit_count, ids_dentro, track_history, frame_num, save_counter
 
     data = request.get_json()
     img_bytes = base64.b64decode(data["image"].split(",")[1])
@@ -65,14 +75,51 @@ def detect():
     active = {d["id"] for d in detections}.union(ids_dentro)
     track_history = {k: v for k, v in track_history.items() if k in active}
 
+    # Save metrics every 10 detect calls
+    num_pessoas = len(ids_dentro)
+    save_counter += 1
+    if db_disponivel and save_counter >= 10:
+        save_counter = 0
+        try:
+            db.salvar_metrica(num_pessoas, num_pessoas * 2, entry_count, exit_count)
+        except Exception:
+            pass
+
     return jsonify({
-        "count": len(ids_dentro),
+        "count": num_pessoas,
         "boxes": detections,
         "entradas": entry_count,
         "saidas": exit_count,
         "linha_x": linha_x,
         "frame_w": w,
     })
+
+
+@app.route("/historico")
+def historico():
+    return render_template("historico.html")
+
+
+@app.route("/api/historico")
+def api_historico():
+    if not db_disponivel:
+        return jsonify({"erro": "Banco de dados indisponivel"}), 503
+    try:
+        dados = db.listar_historico(500)
+        return jsonify(dados)
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
+
+@app.route("/api/estatisticas")
+def api_estatisticas():
+    if not db_disponivel:
+        return jsonify({"erro": "Banco de dados indisponivel"}), 503
+    try:
+        dados = db.estatisticas()
+        return jsonify(dados)
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 
 if __name__ == "__main__":
