@@ -1,5 +1,6 @@
 import base64
 import os
+import time
 import cv2
 import numpy as np
 from flask import Flask, render_template, request, jsonify
@@ -16,6 +17,11 @@ exit_count = 0
 ids_dentro = set()
 frame_num = 0
 save_counter = 0
+
+# Real wait time tracking
+pessoa_entrada = {}
+soma_tempos_reais = 0.0
+total_saidas_tracked = 0
 
 try:
     db.criar_tabela()
@@ -34,6 +40,7 @@ def index():
 @app.route("/detect", methods=["POST"])
 def detect():
     global entry_count, exit_count, ids_dentro, track_history, frame_num, save_counter
+    global pessoa_entrada, soma_tempos_reais, total_saidas_tracked
 
     data = request.get_json()
     img_bytes = base64.b64decode(data["image"].split(",")[1])
@@ -60,9 +67,14 @@ def detect():
                 if prev_x < linha_x and cx >= linha_x:
                     entry_count += 1
                     ids_dentro.add(track_id)
+                    pessoa_entrada[track_id] = time.time()
                 elif prev_x >= linha_x and cx < linha_x:
                     exit_count += 1
                     ids_dentro.discard(track_id)
+                    if track_id in pessoa_entrada:
+                        duracao = (time.time() - pessoa_entrada.pop(track_id)) / 60
+                        soma_tempos_reais += duracao
+                        total_saidas_tracked += 1
 
             track_history[track_id] = cx
             detections.append({
@@ -75,13 +87,16 @@ def detect():
     active = {d["id"] for d in detections}.union(ids_dentro)
     track_history = {k: v for k, v in track_history.items() if k in active}
 
+    # Real average wait time (minutes)
+    tempo_real_medio = round(soma_tempos_reais / total_saidas_tracked, 1) if total_saidas_tracked > 0 else None
+
     # Save metrics every 10 detect calls
     num_pessoas = len(ids_dentro)
     save_counter += 1
     if db_disponivel and save_counter >= 10:
         save_counter = 0
         try:
-            db.salvar_metrica(num_pessoas, num_pessoas * 2, entry_count, exit_count)
+            db.salvar_metrica(num_pessoas, num_pessoas * 2, entry_count, exit_count, tempo_real_medio)
         except Exception:
             pass
 
@@ -92,6 +107,7 @@ def detect():
         "saidas": exit_count,
         "linha_x": linha_x,
         "frame_w": w,
+        "tempo_real_medio": tempo_real_medio,
     })
 
 

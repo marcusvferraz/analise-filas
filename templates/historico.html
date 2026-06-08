@@ -41,6 +41,7 @@
         .stat-card .value.green { color: #22c55e; }
         .stat-card .value.yellow { color: #eab308; }
         .stat-card .value.red { color: #ef4444; }
+        .stat-card .value.blue { color: #3b82f6; }
         .chart-wrap {
             width: 100%;
             max-width: 800px;
@@ -87,7 +88,22 @@
 
     <div class="stats-grid" id="statsContainer"></div>
     <div class="chart-wrap"><canvas id="grafico"></canvas></div>
-    <div class="table-wrap"><table id="tabela"><thead><tr><th>ID</th><th>Pessoas</th><th>Tempo est.</th><th>Entradas</th><th>Saídas</th><th>Horário</th></tr></thead><tbody></tbody></table></div>
+    <div class="table-wrap">
+        <table id="tabela">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Pessoas</th>
+                    <th>Tempo est.</th>
+                    <th>Tempo real</th>
+                    <th>Entradas</th>
+                    <th>Saídas</th>
+                    <th>Horário</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
     <div class="loading" id="loading">Carregando...</div>
 
     <script>
@@ -106,52 +122,78 @@
 
                 document.getElementById("loading").style.display = "none";
 
-                // Stats cards
+                const mediaReal = stats.media_tempo_real ? stats.media_tempo_real + "min" : "—";
+
                 const cards = [
                     { label: "Média de pessoas", value: stats.media_pessoas, cls: "yellow" },
                     { label: "Máximo de pessoas", value: stats.max_pessoas, cls: "red" },
                     { label: "Mínimo de pessoas", value: stats.min_pessoas, cls: "green" },
                     { label: "Total entradas", value: stats.total_entradas, cls: "green" },
                     { label: "Total saídas", value: stats.total_saidas, cls: "green" },
+                    { label: "Tempo real médio", value: mediaReal, cls: "blue" },
+                    { label: "Tempo est. médio", value: stats.media_tempo_est + "min", cls: "yellow" },
                     { label: "Crescimento (tot.)", value: stats.crescimento, cls: stats.crescimento > 0 ? "red" : "green" },
                 ];
                 document.getElementById("statsContainer").innerHTML = cards.map(c =>
                     `<div class="stat-card"><div class="label">${c.label}</div><div class="value ${c.cls}">${c.value}</div></div>`
                 ).join("");
 
-                // Chart
                 const dados = stats.dados_crescimento || [];
                 const labels = dados.map(d => new Date(d.created_at).toLocaleTimeString("pt-BR"));
                 const valores = dados.map(d => d.quantidade);
+                const temposReais = dados.map(d => d.tempo_real_medio);
+
                 new Chart(document.getElementById("grafico"), {
                     type: "line",
                     data: {
                         labels,
-                        datasets: [{
-                            label: "Pessoas na fila",
-                            data: valores,
-                            borderColor: "#22c55e",
-                            backgroundColor: "rgba(34,197,94,0.1)",
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 2,
-                        }],
+                        datasets: [
+                            {
+                                label: "Pessoas na fila",
+                                data: valores,
+                                borderColor: "#22c55e",
+                                backgroundColor: "rgba(34,197,94,0.1)",
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 2,
+                                yAxisID: "y",
+                            },
+                            {
+                                label: "Tempo real médio (min)",
+                                data: temposReais,
+                                borderColor: "#3b82f6",
+                                backgroundColor: "rgba(59,130,246,0.1)",
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 2,
+                                yAxisID: "y1",
+                            },
+                        ],
                     },
                     options: {
                         responsive: true,
                         plugins: { legend: { labels: { color: "#888" } } },
                         scales: {
                             x: { ticks: { color: "#666", maxTicksLimit: 10 } },
-                            y: { ticks: { color: "#666" }, beginAtZero: true },
+                            y: { ticks: { color: "#666" }, beginAtZero: true, position: "left" },
+                            y1: { ticks: { color: "#3b82f6" }, beginAtZero: true, position: "right", grid: { drawOnChartArea: false } },
                         },
                     },
                 });
 
-                // Table
                 const tbody = document.querySelector("#tabela tbody");
-                tbody.innerHTML = hist.map(h =>
-                    `<tr><td>${h.id}</td><td>${h.quantidade}</td><td>${h.tempo_estimado}min</td><td>${h.entradas}</td><td>${h.saidas}</td><td>${new Date(h.created_at).toLocaleString("pt-BR")}</td></tr>`
-                ).join("");
+                tbody.innerHTML = hist.map(h => {
+                    const tempoReal = h.tempo_real_medio != null ? h.tempo_real_medio + "min" : "—";
+                    return `<tr>
+                        <td>${h.id}</td>
+                        <td>${h.quantidade}</td>
+                        <td>${h.tempo_estimado}min</td>
+                        <td>${tempoReal}</td>
+                        <td>${h.entradas}</td>
+                        <td>${h.saidas}</td>
+                        <td>${new Date(h.created_at).toLocaleString("pt-BR")}</td>
+                    </tr>`;
+                }).join("");
 
             } catch (err) {
                 document.getElementById("loading").textContent = "Erro ao carregar dados: " + err.message;

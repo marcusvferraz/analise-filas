@@ -1,5 +1,4 @@
 import pymysql
-from datetime import datetime
 
 DB_HOST = "127.0.0.1"
 DB_PORT = 3306
@@ -30,6 +29,7 @@ def criar_tabela():
                 tempo_estimado INT NOT NULL,
                 entradas INT DEFAULT 0,
                 saidas INT DEFAULT 0,
+                tempo_real_medio DECIMAL(10,1) DEFAULT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -37,12 +37,13 @@ def criar_tabela():
     conn.close()
 
 
-def salvar_metrica(quantidade, tempo_estimado, entradas, saidas):
+def salvar_metrica(quantidade, tempo_estimado, entradas, saidas, tempo_real_medio=None):
     conn = get_conn()
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO historico_filas (quantidade, tempo_estimado, entradas, saidas) VALUES (%s, %s, %s, %s)",
-            (quantidade, tempo_estimado, entradas, saidas),
+            "INSERT INTO historico_filas (quantidade, tempo_estimado, entradas, saidas, tempo_real_medio) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (quantidade, tempo_estimado, entradas, saidas, tempo_real_medio),
         )
     conn.commit()
     conn.close()
@@ -68,8 +69,10 @@ def estatisticas():
                 ROUND(AVG(quantidade), 1) AS media_pessoas,
                 MAX(quantidade) AS max_pessoas,
                 MIN(quantidade) AS min_pessoas,
-                ROUND(AVG(tempo_estimado), 1) AS media_tempo,
-                MAX(tempo_estimado) AS max_tempo,
+                ROUND(AVG(tempo_estimado), 1) AS media_tempo_est,
+                MAX(tempo_estimado) AS max_tempo_est,
+                ROUND(AVG(tempo_real_medio), 1) AS media_tempo_real,
+                MAX(tempo_real_medio) AS max_tempo_real,
                 SUM(entradas) AS total_entradas,
                 SUM(saidas) AS total_saidas
             FROM historico_filas
@@ -77,7 +80,7 @@ def estatisticas():
         stats = cur.fetchone()
 
         cur.execute(
-            "SELECT quantidade, created_at FROM historico_filas ORDER BY created_at ASC"
+            "SELECT quantidade, tempo_real_medio, created_at FROM historico_filas ORDER BY created_at ASC"
         )
         crescimento = cur.fetchall()
     conn.close()
