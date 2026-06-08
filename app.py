@@ -10,8 +10,8 @@ import database as db
 app = Flask(__name__)
 model = YOLO("yolov8n.pt")
 
-ENTRADA_X = 0.65
-SAIDA_X = 0.35
+ENTRADA_X = 0.80
+SAIDA_X = 0.20
 track_history = {}
 entry_count = 0
 exit_count = 0

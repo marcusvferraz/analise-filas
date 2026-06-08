@@ -7,8 +7,8 @@ TEMPO_POR_PESSOA = 2
 LIMIAR_PEQUENA = 3
 LIMIAR_MEDIA = 6
 
-ENTRADA_X = 0.65
-SAIDA_X = 0.35
+ENTRADA_X = 0.80
+SAIDA_X = 0.20
 track_history = {}
 entry_count = 0
 exit_count = 0
