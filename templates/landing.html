@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueueVision AI - Análise Inteligente de Filas</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+        /* Navbar */
+        nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 18px 24px; max-width: 1100px; margin: 0 auto;
+        }
+        nav .logo { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
+        nav .logo span { color: #3b82f6; }
+        nav .nav-links { display: flex; gap: 24px; align-items: center; }
+        nav .nav-links a { color: #94a3b8; text-decoration: none; font-size: 14px; transition: color 0.2s; }
+        nav .nav-links a:hover { color: #fff; }
+        nav .nav-links .btn-demo {
+            background: #3b82f6; color: #fff; padding: 8px 18px; border-radius: 6px; font-weight: 600;
+        }
+        nav .nav-links .btn-demo:hover { background: #2563eb; }
+        @media (max-width: 640px) {
+            nav .nav-links a:not(.btn-demo) { display: none; }
+        }
+
+        /* Hero */
+        .hero {
+            min-height: 85vh; display: flex; align-items: center;
+            position: relative; overflow: hidden;
+        }
+        .hero::before {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(ellipse 600px 400px at 70% 40%, rgba(59,130,246,0.12), transparent),
+                        radial-gradient(ellipse 400px 300px at 30% 60%, rgba(99,102,241,0.08), transparent);
+        }
+        .hero .container { position: relative; z-index: 1; display: flex; align-items: center; gap: 60px; }
+        .hero-text { flex: 1; }
+        .hero-text .badge {
+            display: inline-block; background: rgba(59,130,246,0.15); color: #93c5fd;
+            padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+            letter-spacing: 0.5px; margin-bottom: 16px; border: 1px solid rgba(59,130,246,0.25);
+        }
+        .hero-text h1 {
+            font-size: 44px; font-weight: 800; line-height: 1.15; color: #fff;
+            letter-spacing: -0.5px; margin-bottom: 18px;
+        }
+        .hero-text h1 span { color: #3b82f6; }
+        .hero-text p {
+            font-size: 17px; line-height: 1.6; color: #94a3b8; max-width: 520px; margin-bottom: 28px;
+        }
+        .hero-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+        .hero-buttons .btn-primary {
+            background: #3b82f6; color: #fff; padding: 12px 28px; border-radius: 8px;
+            text-decoration: none; font-weight: 600; font-size: 15px; transition: all 0.2s;
+        }
+        .hero-buttons .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+        .hero-buttons .btn-secondary {
+            background: rgba(255,255,255,0.06); color: #e2e8f0; padding: 12px 28px; border-radius: 8px;
+            text-decoration: none; font-weight: 600; font-size: 15px; border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.2s;
+        }
+        .hero-buttons .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+
+        .hero-visual {
+            flex: 1; display: flex; justify-content: center; align-items: center;
+        }
+        .hero-visual .mock-screen {
+            width: 100%; max-width: 480px; background: #1e293b; border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.06); overflow: hidden;
+            box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+        }
+        .mock-screen .mock-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 18px; background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .mock-screen .mock-header .mock-title { font-size: 12px; color: #64748b; letter-spacing: 0.5px; }
+        .mock-screen .mock-header .mock-time { font-size: 11px; color: #475569; }
+        .mock-screen .mock-body { padding: 18px; }
+        .mock-screen .mock-body .mock-row {
+            display: flex; justify-content: space-between; padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .mock-screen .mock-body .mock-row:last-child { border: none; }
+        .mock-screen .mock-body .mock-row .label { color: #64748b; font-size: 12px; }
+        .mock-screen .mock-body .mock-row .value { font-weight: 700; font-size: 14px; color: #fff; }
+        .mock-screen .mock-body .mock-row .value.green { color: #22c55e; }
+        .mock-screen .mock-body .mock-row .value.yellow { color: #eab308; }
+        .mock-screen .mock-footer {
+            height: 4px; background: linear-gradient(90deg, #3b82f6, #22c55e);
+        }
+        .mock-line {
+            display: flex; align-items: center; gap: 8px; margin: 14px 0;
+            padding: 6px 0;
+        }
+        .mock-line .bar { height: 3px; border-radius: 2px; }
+        .mock-line .bar.green { width: 40%; background: #22c55e; }
+        .mock-line .bar.red { width: 40%; background: #ef4444; }
+
+        @media (max-width: 768px) {
+            .hero { min-height: auto; padding: 40px 0 60px; }
+            .hero .container { flex-direction: column; gap: 40px; }
+            .hero-text h1 { font-size: 30px; }
+            .hero-text p { font-size: 15px; }
+        }
+
+        /* Section common */
+        section { padding: 80px 0; }
+        .section-label {
+            display: inline-block; background: rgba(59,130,246,0.12); color: #93c5fd;
+            padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600;
+            letter-spacing: 0.5px; margin-bottom: 12px;
+        }
+        .section-title {
+            font-size: 30px; font-weight: 700; color: #fff; margin-bottom: 14px;
+            letter-spacing: -0.3px;
+        }
+        .section-sub {
+            color: #64748b; font-size: 15px; max-width: 600px; line-height: 1.6;
+        }
+        .text-center { text-align: center; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+
+        /* Como funciona */
+        .steps { display: flex; justify-content: center; gap: 16px; margin-top: 44px; flex-wrap: wrap; }
+        .step-card {
+            background: rgba(30,41,59,0.6); backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.05); border-radius: 12px;
+            padding: 22px 20px; text-align: center; flex: 1; min-width: 130px; max-width: 170px;
+            transition: border-color 0.2s;
+        }
+        .step-card:hover { border-color: rgba(59,130,246,0.25); }
+        .step-card .icon { font-size: 28px; margin-bottom: 8px; }
+        .step-card h4 { font-size: 13px; color: #e2e8f0; margin-bottom: 4px; }
+        .step-card p { font-size: 11px; color: #64748b; }
+        .step-arrow { color: #3b82f6; font-size: 20px; align-self: center; padding-top: 20px; }
+        @media (max-width: 640px) {
+            .steps { flex-direction: column; align-items: center; }
+            .step-card { max-width: 260px; }
+            .step-arrow { transform: rotate(90deg); padding-top: 0; }
+        }
+
+        /* Features */
+        .features-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px; margin-top: 44px;
+        }
+        .feature-card {
+            background: rgba(30,41,59,0.5); backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.05); border-radius: 12px;
+            padding: 26px 22px; transition: all 0.2s;
+        }
+        .feature-card:hover { border-color: rgba(59,130,246,0.2); transform: translateY(-2px); }
+        .feature-card .icon { font-size: 32px; margin-bottom: 12px; }
+        .feature-card h4 { font-size: 16px; color: #fff; margin-bottom: 6px; }
+        .feature-card p { font-size: 13px; color: #64748b; line-height: 1.5; }
+
+        /* Tech */
+        .tech-list {
+            display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-top: 36px;
+        }
+        .tech-item {
+            background: rgba(30,41,59,0.6); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px; padding: 14px 24px; font-size: 14px; font-weight: 600;
+            color: #e2e8f0; transition: all 0.2s;
+        }
+        .tech-item:hover { border-color: rgba(59,130,246,0.3); color: #93c5fd; }
+        .tech-item .dot { color: #3b82f6; margin-right: 6px; }
+
+        /* Benefits */
+        .benefits-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 18px; margin-top: 44px;
+        }
+        .benefit-card {
+            background: rgba(30,41,59,0.5); backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.05); border-radius: 12px;
+            padding: 22px; text-align: center; transition: border-color 0.2s;
+        }
+        .benefit-card:hover { border-color: rgba(59,130,246,0.2); }
+        .benefit-card .icon { font-size: 30px; margin-bottom: 8px; }
+        .benefit-card h4 { font-size: 14px; color: #fff; margin-bottom: 4px; }
+        .benefit-card p { font-size: 12px; color: #64748b; }
+
+        /* Preview */
+        .preview-box {
+            max-width: 560px; margin: 36px auto 0;
+            background: #1e293b; border-radius: 16px; border: 1px solid rgba(255,255,255,0.06);
+            overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .preview-box .preview-header {
+            display: flex; gap: 8px; padding: 14px 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .preview-box .preview-header .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .preview-box .preview-header .dot.r { background: #ef4444; }
+        .preview-box .preview-header .dot.y { background: #eab308; }
+        .preview-box .preview-header .dot.g { background: #22c55e; }
+
+        .preview-box .preview-body { padding: 20px; }
+        .preview-box .preview-body .p-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .preview-box .preview-body .p-row:last-child { border: none; }
+        .preview-box .preview-body .p-row .p-label { color: #64748b; font-size: 13px; }
+        .preview-box .preview-body .p-row .p-value { font-weight: 700; font-size: 16px; color: #fff; }
+        .preview-box .preview-body .p-row .p-value.green { color: #22c55e; }
+        .preview-box .preview-body .p-row .p-value.yellow { color: #eab308; }
+        .preview-box .preview-body .p-row .p-value.red { color: #ef4444; }
+
+        .preview-box .preview-bar {
+            height: 6px; background: rgba(255,255,255,0.06); margin: 14px 18px 18px;
+            border-radius: 3px; overflow: hidden;
+        }
+        .preview-box .preview-bar .fill {
+            height: 100%; width: 60%; background: linear-gradient(90deg, #eab308, #ef4444);
+            border-radius: 3px;
+        }
+        .status-badge {
+            padding: 3px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;
+        }
+        .status-badge.yellow { background: rgba(234,179,8,0.15); color: #eab308; }
+
+        /* About */
+        .about-text {
+            max-width: 600px; margin: 20px auto 0; text-align: center;
+            color: #64748b; font-size: 15px; line-height: 1.7;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid rgba(255,255,255,0.05); padding: 30px 24px;
+            text-align: center;
+        }
+        footer .logo { font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+        footer .logo span { color: #3b82f6; }
+        footer p { color: #475569; font-size: 13px; margin-top: 6px; }
+
+        /* Glass section bg */
+        .glass-bg {
+            position: relative;
+        }
+        .glass-bg::before {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(ellipse 500px 300px at 50% 0%, rgba(59,130,246,0.04), transparent);
+            pointer-events: none;
+        }
+
+        .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(59,130,246,0.15), transparent); max-width: 300px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav>
+    <div class="logo">Queue<span>Vision</span> AI</div>
+    <div class="nav-links">
+        <a href="#funciona">Como funciona</a>
+        <a href="#funcionalidades">Funcionalidades</a>
+        <a href="#beneficios">Benefícios</a>
+        <a href="/monitorar" class="btn-demo">Ver Demonstração</a>
+    </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-text">
+            <div class="badge">Computer Vision &bull; Tempo Real</div>
+            <h1>Análise Inteligente<br>de Filas com <span>Computer Vision</span></h1>
+            <p>Monitore filas em tempo real, conte pessoas automaticamente e estime o tempo de espera utilizando Inteligência Artificial.</p>
+            <div class="hero-buttons">
+                <a href="/monitorar" class="btn-primary">Ver Demonstração</a>
+                <a href="#funciona" class="btn-secondary">Saiba Mais</a>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="mock-screen">
+                <div class="mock-header">
+                    <span class="mock-title">QueueVision AI — Monitoramento</span>
+                    <span class="mock-time">14:32:18</span>
+                </div>
+                <div class="mock-body">
+                    <div class="mock-row"><span class="label">Pessoas na fila</span><span class="value">12</span></div>
+                    <div class="mock-row"><span class="label">Tempo estimado</span><span class="value">24 min</span></div>
+                    <div class="mock-row"><span class="label">Status</span><span class="value yellow">FILA MÉDIA</span></div>
+                    <div class="mock-line">
+                        <span class="bar green"></span><span class="bar red"></span>
+                    </div>
+                    <div class="mock-row"><span class="label">Entradas hoje</span><span class="value green">47</span></div>
+                    <div class="mock-row"><span class="label">Saídas hoje</span><span class="value">32</span></div>
+                </div>
+                <div class="mock-footer"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Como Funciona -->
+<section id="funciona" class="glass-bg" style="padding-top:40px;">
+    <div class="container text-center">
+        <div class="section-label">FLUXO</div>
+        <h2 class="section-title">Como Funciona</h2>
+        <p class="section-sub mx-auto">Da captura da imagem até a exibição das métricas em tempo real.</p>
+
+        <div class="steps">
+            <div class="step-card"><div class="icon">📷</div><h4>Câmera</h4><p>Captura do vídeo em tempo real pela webcam</p></div>
+            <div class="step-arrow">→</div>
+            <div class="step-card"><div class="icon">🧠</div><h4>YOLO Detecta</h4><p>Rede neural identifica pessoas no frame</p></div>
+            <div class="step-arrow">→</div>
+            <div class="step-card"><div class="icon">🔢</div><h4>Conta Pessoas</h4><p>Rastreamento individual com ByteTrack</p></div>
+            <div class="step-arrow">→</div>
+            <div class="step-card"><div class="icon">⏱️</div><h4>Calcula Tempo</h4><p>Estima tempo de espera baseado na quantidade</p></div>
+            <div class="step-arrow">→</div>
+            <div class="step-card"><div class="icon">📊</div><h4>Exibe Métricas</h4><p>Dashboard com dados em tempo real e histórico</p></div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Funcionalidades -->
+<section id="funcionalidades">
+    <div class="container text-center">
+        <div class="section-label">RECURSOS</div>
+        <h2 class="section-title">Funcionalidades</h2>
+        <p class="section-sub mx-auto">Tudo que você precisa para monitorar e analisar filas.</p>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="icon">👥</div>
+                <h4>Contagem de Pessoas</h4>
+                <p>Detecta automaticamente quantas pessoas estão na fila em tempo real.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">⏱️</div>
+                <h4>Estimativa de Espera</h4>
+                <p>Calcula o tempo aproximado de atendimento com base na ocupação da fila.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">📊</div>
+                <h4>Monitoramento em Tempo Real</h4>
+                <p>Atualização contínua das métricas com overlay diretamente no vídeo.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon">🎯</div>
+                <h4>Linha Virtual</h4>
+                <p>Identifica entrada e saída de pessoas da fila com duas linhas de detecção.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Tecnologias -->
+<section>
+    <div class="container text-center">
+        <div class="section-label">STACK</div>
+        <h2 class="section-title">Tecnologias Utilizadas</h2>
+        <p class="section-sub mx-auto">Ferramentas modernas para visão computacional e análise de dados.</p>
+        <div class="tech-list">
+            <div class="tech-item"><span class="dot">◆</span>Python</div>
+            <div class="tech-item"><span class="dot">◆</span>OpenCV</div>
+            <div class="tech-item"><span class="dot">◆</span>YOLOv8</div>
+            <div class="tech-item"><span class="dot">◆</span>ByteTrack</div>
+            <div class="tech-item"><span class="dot">◆</span>Flask</div>
+            <div class="tech-item"><span class="dot">◆</span>MySQL</div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Benefícios -->
+<section id="beneficios">
+    <div class="container text-center">
+        <div class="section-label">APLICAÇÕES</div>
+        <h2 class="section-title">Benefícios</h2>
+        <p class="section-sub mx-auto">Solução versátil para diversos segmentos.</p>
+
+        <div class="benefits-grid">
+            <div class="benefit-card">
+                <div class="icon">🏥</div>
+                <h4>Hospitais</h4>
+                <p>Controle de filas de atendimento e triagem.</p>
+            </div>
+            <div class="benefit-card">
+                <div class="icon">🏦</div>
+                <h4>Bancos</h4>
+                <p>Estimativa de espera para clientes em agências.</p>
+            </div>
+            <div class="benefit-card">
+                <div class="icon">🛒</div>
+                <h4>Mercados</h4>
+                <p>Monitoramento de filas nos caixas.</p>
+            </div>
+            <div class="benefit-card">
+                <div class="icon">🚌</div>
+                <h4>Transporte</h4>
+                <p>Análise de fluxo de passageiros em terminais.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Dashboard Preview -->
+<section>
+    <div class="container text-center">
+        <div class="section-label">DASHBOARD</div>
+        <h2 class="section-title">Preview do Sistema</h2>
+        <p class="section-sub mx-auto">Interface limpa com métricas em tempo real e histórico completo.</p>
+
+        <div class="preview-box">
+            <div class="preview-header">
+                <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            </div>
+            <div class="preview-body">
+                <div class="p-row"><span class="p-label">Pessoas na fila</span><span class="p-value">12</span></div>
+                <div class="p-row"><span class="p-label">Tempo estimado</span><span class="p-value">24 min</span></div>
+                <div class="p-row"><span class="p-label">Status</span><span class="status-badge yellow">FILA MÉDIA</span></div>
+                <div class="p-row"><span class="p-label">Entradas / Saídas</span><span class="p-value">47 / 32</span></div>
+                <div class="p-row"><span class="p-label">Tempo real médio</span><span class="p-value">3.2 min</span></div>
+            </div>
+            <div class="preview-bar"><div class="fill"></div></div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Sobre -->
+<section>
+    <div class="container text-center">
+        <div class="section-label">PROJETO</div>
+        <h2 class="section-title">Sobre o Projeto</h2>
+        <p class="about-text">
+            Projeto desenvolvido para estudo e aplicação de técnicas de <strong>Visão Computacional</strong>
+            utilizando <strong>YOLO</strong> e <strong>OpenCV</strong> para análise inteligente de filas em tempo real.
+            Combina detecção de objetos, rastreamento de pessoas e métricas de negócio em uma interface web moderna.
+        </p>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="logo" style="font-size:17px;">Queue<span>Vision</span> AI</div>
+    <p>Desenvolvido por Marcus Vinicius &bull; 2026</p>
+</footer>
+
+</body>
+</html>

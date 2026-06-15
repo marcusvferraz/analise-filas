@@ -34,7 +34,12 @@ except Exception as e:
 
 
 @app.route("/")
-def index():
+def landing():
+    return render_template("landing.html")
+
+
+@app.route("/monitorar")
+def monitor():
     return render_template("index.html")
 
 
