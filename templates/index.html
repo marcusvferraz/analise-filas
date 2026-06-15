@@ -3,325 +3,368 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análise de Filas</title>
+    <title>QueueVision AI — Monitoramento</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: #0f0f0f;
-            color: #fff;
-            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
-            padding: 20px;
         }
-        h1 {
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: #e0e0e0;
-            margin-bottom: 4px;
+
+        nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 24px; max-width: 1100px; width: 100%;
         }
-        .subtitle {
-            color: #666;
-            font-size: 12px;
-            margin-bottom: 15px;
-            letter-spacing: 0.5px;
+        nav .logo { font-size: 17px; font-weight: 700; color: #fff; }
+        nav .logo span { color: #3b82f6; }
+        nav .nav-links { display: flex; gap: 16px; align-items: center; }
+        nav .nav-links a { color: #94a3b8; text-decoration: none; font-size: 13px; transition: color 0.2s; }
+        nav .nav-links a:hover { color: #fff; }
+        nav .nav-links .btn-hist {
+            background: rgba(59,130,246,0.12); color: #93c5fd; padding: 6px 14px;
+            border-radius: 6px; font-size: 13px; font-weight: 600;
         }
-        .video-container {
-            position: relative;
-            width: 640px;
-            max-width: 100%;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.6);
-            border: 1px solid #2a2a2a;
+        nav .nav-links .btn-hist:hover { background: rgba(59,130,246,0.2); }
+
+        .container {
+            flex: 1; padding: 20px 24px 40px;
+            display: flex; flex-direction: column; align-items: center; width: 100%;
+        }
+
+        .monitor-card {
+            width: 640px; max-width: 100%;
+            background: rgba(30,41,59,0.5); backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px; overflow: hidden;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+        }
+
+        .monitor-card .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .monitor-card .card-header .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            display: inline-block; margin-right: 8px;
+        }
+        .monitor-card .card-header .status-dot.green { background: #22c55e; }
+        .monitor-card .card-header .status-dot.red { background: #ef4444; }
+        .monitor-card .card-header .status-dot.yellow { background: #eab308; }
+        .monitor-card .card-header .left { display: flex; align-items: center; gap: 10px; }
+        .monitor-card .card-header .title { font-size: 12px; font-weight: 600; color: #94a3b8; letter-spacing: 0.3px; }
+        .monitor-card .card-header .time { font-size: 11px; color: #475569; }
+
+        .video-wrapper {
+            position: relative; width: 100%;
         }
         video, canvas {
-            display: block;
-            width: 100%;
-            height: auto;
+            display: block; width: 100%; height: auto;
         }
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
+        canvas { position: absolute; top: 0; left: 0; }
+
+        .monitor-card .card-footer {
+            border-top: 1px solid rgba(255,255,255,0.04);
+            padding: 16px 18px;
         }
-        .info-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 640px;
-            max-width: 100%;
-            margin-top: 12px;
-            padding: 10px 14px;
-            background: #1a1a1a;
-            border-radius: 8px;
-            border: 1px solid #2a2a2a;
-            flex-wrap: wrap;
-            gap: 6px;
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
         }
-        .info-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-width: 70px;
+        .metric {
+            background: rgba(15,23,42,0.5); border-radius: 8px;
+            padding: 10px 6px; text-align: center;
         }
-        .info-label {
-            font-size: 10px;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .metric .label { font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; }
+        .metric .value { font-size: 20px; font-weight: 700; margin-top: 3px; }
+        .metric .value.green { color: #22c55e; }
+        .metric .value.yellow { color: #eab308; }
+        .metric .value.red { color: #ef4444; }
+        .metric .value.blue { color: #3b82f6; }
+
+        .status-badge {
+            display: inline-block; padding: 3px 12px; border-radius: 12px;
+            font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+            margin-top: 3px;
         }
-        .info-value {
-            font-size: 18px;
-            font-weight: 700;
-            margin-top: 2px;
-        }
-        #status-badge {
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
+        .status-badge.green { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .status-badge.yellow { background: rgba(234,179,8,0.15); color: #eab308; }
+        .status-badge.red { background: rgba(239,68,68,0.15); color: #ef4444; }
+
         .controls {
-            display: flex;
-            gap: 10px;
-            margin-top: 14px;
+            display: flex; gap: 10px; margin-top: 18px; align-items: center; flex-wrap: wrap; justify-content: center;
         }
         button {
-            padding: 9px 22px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            transition: opacity 0.2s;
+            padding: 10px 24px; border: none; border-radius: 8px;
+            cursor: pointer; font-size: 14px; font-weight: 600;
+            transition: all 0.2s;
         }
         #startBtn { background: #22c55e; color: #fff; }
+        #startBtn:hover { background: #16a34a; transform: translateY(-1px); }
         #stopBtn { background: #ef4444; color: #fff; display: none; }
-        button:hover { opacity: 0.85; }
-        #status-msg {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #555;
+        #stopBtn:hover { background: #dc2626; }
+
+        .progress-bar {
+            height: 4px; background: rgba(255,255,255,0.04); border-radius: 2px;
+            margin-top: 14px; overflow: hidden;
+        }
+        .progress-bar .fill {
+            height: 100%; border-radius: 2px; transition: width 0.3s;
+        }
+
+        .status-msg { margin-top: 12px; font-size: 12px; color: #475569; text-align: center; }
+
+        @media (max-width: 700px) {
+            .metrics-grid { grid-template-columns: repeat(3, 1fr); }
         }
     </style>
 </head>
 <body>
-    <h1>ANÁLISE DE FILAS</h1>
-    <p class="subtitle">Monitoramento inteligente em tempo real</p>
 
-    <div class="video-container">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="overlay"></canvas>
+<nav>
+    <a href="/" style="text-decoration:none;"><div class="logo">Queue<span>Vision</span> AI</div></a>
+    <div class="nav-links">
+        <a href="/">Início</a>
+        <a href="/historico" class="btn-hist">Histórico</a>
     </div>
+</nav>
 
-    <div class="info-bar">
-        <div class="info-item">
-            <span class="info-label">Na fila</span>
-            <span class="info-value" id="count">0</span>
+<div class="container">
+    <div class="monitor-card">
+        <div class="card-header">
+            <div class="left">
+                <span class="status-dot green" id="liveDot"></span>
+                <span class="title">MONITORAMENTO EM TEMPO REAL</span>
+            </div>
+            <span class="time" id="clock">--:--:--</span>
         </div>
-        <div class="info-item">
-            <span class="info-label">Entradas</span>
-            <span class="info-value" id="entradas">0</span>
+
+        <div class="video-wrapper">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="overlay"></canvas>
         </div>
-        <div class="info-item">
-            <span class="info-label">Saídas</span>
-            <span class="info-value" id="saidas">0</span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Tempo est.</span>
-            <span class="info-value" id="time-est">0 min</span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Horário</span>
-            <span class="info-value" id="clock">--:--:--</span>
-        </div>
-        <div class="info-item">
-            <span class="info-label">Status</span>
-            <span id="status-badge" style="background:#333;color:#999;">—</span>
+
+        <div class="card-footer">
+            <div class="metrics-grid">
+                <div class="metric">
+                    <div class="label">Na fila</div>
+                    <div class="value" id="count">0</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Entradas</div>
+                    <div class="value green" id="entradas">0</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Saídas</div>
+                    <div class="value" id="saidas">0</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Tempo est.</div>
+                    <div class="value yellow" id="time-est">0 min</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Tempo real</div>
+                    <div class="value blue" id="tempo-real">—</div>
+                </div>
+                <div class="metric">
+                    <div class="label">Status</div>
+                    <span class="status-badge" id="status-badge">—</span>
+                </div>
+            </div>
+
+            <div class="progress-bar"><div class="fill" id="progressFill" style="width:0%;background:#22c55e;"></div></div>
         </div>
     </div>
 
     <div class="controls">
-        <button id="startBtn">Iniciar Webcam</button>
-        <button id="stopBtn">Parar</button>
-        <a href="/" style="color:#64748b;font-size:12px;text-decoration:none;margin-left:8px;align-self:center;">&larr; Landing</a>
+        <button id="startBtn">▶ Iniciar Webcam</button>
+        <button id="stopBtn">⏹ Parar</button>
     </div>
-    <div id="status-msg">Aguardando início...</div>
+    <div class="status-msg" id="status-msg">Aguardando início...</div>
+</div>
 
-    <script>
-        const TEMPO_POR_PESSOA = 2;
-        const LIMIAR_PEQUENA = 3;
-        const LIMIAR_MEDIA = 6;
+<script>
+    const TEMPO_POR_PESSOA = 2;
+    const LIMIAR_PEQUENA = 3;
+    const LIMIAR_MEDIA = 6;
 
-        const video = document.getElementById("video");
-        const canvas = document.getElementById("overlay");
-        const ctx = canvas.getContext("2d");
-        const countEl = document.getElementById("count");
-        const entradasEl = document.getElementById("entradas");
-        const saidasEl = document.getElementById("saidas");
-        const timeEl = document.getElementById("time-est");
-        const badgeEl = document.getElementById("status-badge");
-        const clockEl = document.getElementById("clock");
-        const statusMsg = document.getElementById("status-msg");
-        const startBtn = document.getElementById("startBtn");
-        const stopBtn = document.getElementById("stopBtn");
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("overlay");
+    const ctx = canvas.getContext("2d");
+    const liveDot = document.getElementById("liveDot");
+    const countEl = document.getElementById("count");
+    const entradasEl = document.getElementById("entradas");
+    const saidasEl = document.getElementById("saidas");
+    const timeEl = document.getElementById("time-est");
+    const tempoRealEl = document.getElementById("tempo-real");
+    const badgeEl = document.getElementById("status-badge");
+    const clockEl = document.getElementById("clock");
+    const statusMsg = document.getElementById("status-msg");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const progressFill = document.getElementById("progressFill");
 
-        let stream = null;
-        let sending = false;
-        let animFrame = null;
-        let frameCount = 0;
+    let stream = null;
+    let sending = false;
+    let animFrame = null;
+    let frameCount = 0;
 
-        video.style.transform = "scaleX(-1)";
+    video.style.transform = "scaleX(-1)";
 
-        setInterval(() => {
-            clockEl.textContent = new Date().toLocaleTimeString("pt-BR");
-        }, 1000);
+    setInterval(() => {
+        clockEl.textContent = new Date().toLocaleTimeString("pt-BR");
+    }, 1000);
 
-        function getStatus(qtd) {
-            if (qtd === 0) return { label: "Sem fila", color: "#22c55e", bg: "rgba(34,197,94,0.15)" };
-            if (qtd < LIMIAR_PEQUENA) return { label: "Fila pequena", color: "#22c55e", bg: "rgba(34,197,94,0.15)" };
-            if (qtd < LIMIAR_MEDIA) return { label: "Fila média", color: "#eab308", bg: "rgba(234,179,8,0.15)" };
-            return { label: "Fila lotada", color: "#ef4444", bg: "rgba(239,68,68,0.15)" };
-        }
+    function getStatus(qtd) {
+        if (qtd === 0) return { label: "Sem fila", color: "#22c55e", cls: "green" };
+        if (qtd < LIMIAR_PEQUENA) return { label: "Fila pequena", color: "#22c55e", cls: "green" };
+        if (qtd < LIMIAR_MEDIA) return { label: "Fila média", color: "#eab308", cls: "yellow" };
+        return { label: "Fila lotada", color: "#ef4444", cls: "red" };
+    }
 
-        function drawOverlay(data, vw, vh) {
-            const rect = video.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    function drawOverlay(data, vw, vh) {
+        const rect = video.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const sx = canvas.width / vw;
-            const sy = canvas.height / vh;
+        const sx = canvas.width / vw;
+        const sy = canvas.height / vh;
 
-            // Entry line (green, mirrored)
-            const ex = data.entrada_x != null ? (vw - data.entrada_x) * sx : 0;
+        const ex = data.entrada_x != null ? (vw - data.entrada_x) * sx : 0;
+        ctx.strokeStyle = "#22c55e";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        ctx.moveTo(ex, 0);
+        ctx.lineTo(ex, canvas.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#22c55e";
+        ctx.font = "bold 10px Arial";
+        ctx.fillText("ENTRADA", ex + 6, 14);
+
+        const sx2 = data.saida_x != null ? (vw - data.saida_x) * sx : canvas.width;
+        ctx.strokeStyle = "#ef4444";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 4]);
+        ctx.beginPath();
+        ctx.moveTo(sx2, 0);
+        ctx.lineTo(sx2, canvas.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#ef4444";
+        ctx.font = "bold 10px Arial";
+        ctx.fillText("SAIDA", sx2 + 6, 14);
+
+        const boxes = data.boxes || [];
+        for (const b of boxes) {
+            const x1 = (vw - b.x1) * sx;
+            const y1 = b.y1 * sy;
+            const x2 = (vw - b.x2) * sx;
+            const y2 = b.y2 * sy;
             ctx.strokeStyle = "#22c55e";
             ctx.lineWidth = 2;
-            ctx.setLineDash([8, 4]);
-            ctx.beginPath();
-            ctx.moveTo(ex, 0);
-            ctx.lineTo(ex, canvas.height);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.fillStyle = "#22c55e";
-            ctx.font = "10px Arial";
-            ctx.fillText("ENTRADA", ex + 6, 14);
-
-            // Exit line (red, mirrored)
-            const sx2 = data.saida_x != null ? (vw - data.saida_x) * sx : canvas.width;
-            ctx.strokeStyle = "#ef4444";
-            ctx.lineWidth = 2;
-            ctx.setLineDash([8, 4]);
-            ctx.beginPath();
-            ctx.moveTo(sx2, 0);
-            ctx.lineTo(sx2, canvas.height);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.fillStyle = "#ef4444";
-            ctx.font = "10px Arial";
-            ctx.fillText("SAIDA", sx2 + 6, 14);
-
-            // Boxes
-            const boxes = data.boxes || [];
-            for (const b of boxes) {
-                const x1 = (vw - b.x1) * sx;
-                const y1 = b.y1 * sy;
-                const x2 = (vw - b.x2) * sx;
-                const y2 = b.y2 * sy;
-                ctx.strokeStyle = "#22c55e";
-                ctx.lineWidth = 2;
-                ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-            }
+            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
         }
+    }
 
-        async function sendFrame() {
-            if (!sending || !video.videoWidth) {
-                animFrame = requestAnimationFrame(sendFrame);
-                return;
-            }
-            frameCount++;
-            if (frameCount % 3 === 0) {
-                animFrame = requestAnimationFrame(sendFrame);
-                return;
-            }
-
-            const temp = document.createElement("canvas");
-            temp.width = 640;
-            temp.height = 480;
-            const tctx = temp.getContext("2d");
-            tctx.drawImage(video, 0, 0, 640, 480);
-            const dataUrl = temp.toDataURL("image/jpeg", 0.5);
-
-            try {
-                const res = await fetch("/detect", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ image: dataUrl }),
-                });
-                const data = await res.json();
-                const num = data.count || 0;
-
-                countEl.textContent = num;
-                entradasEl.textContent = data.entradas || 0;
-                saidasEl.textContent = data.saidas || 0;
-                timeEl.textContent = (num * TEMPO_POR_PESSOA) + " min";
-
-                const status = getStatus(num);
-                badgeEl.textContent = status.label.toUpperCase();
-                badgeEl.style.color = status.color;
-                badgeEl.style.background = status.bg;
-
-                drawOverlay(data, video.videoWidth, video.videoHeight);
-            } catch (err) {
-                console.error(err);
-            }
+    async function sendFrame() {
+        if (!sending || !video.videoWidth) {
             animFrame = requestAnimationFrame(sendFrame);
+            return;
+        }
+        frameCount++;
+        if (frameCount % 3 === 0) {
+            animFrame = requestAnimationFrame(sendFrame);
+            return;
         }
 
-        async function startCamera() {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-                video.srcObject = stream;
-                await video.play();
-                statusMsg.textContent = "Webcam ativa — monitorando";
-                startBtn.style.display = "none";
-                stopBtn.style.display = "inline-block";
-                sending = true;
-                sendFrame();
-            } catch (err) {
-                statusMsg.textContent = "Erro ao acessar webcam: " + err.message;
-            }
-        }
+        const temp = document.createElement("canvas");
+        temp.width = 640;
+        temp.height = 480;
+        const tctx = temp.getContext("2d");
+        tctx.drawImage(video, 0, 0, 640, 480);
+        const dataUrl = temp.toDataURL("image/jpeg", 0.5);
 
-        function stopCamera() {
-            sending = false;
-            if (animFrame) cancelAnimationFrame(animFrame);
-            if (stream) {
-                stream.getTracks().forEach(t => t.stop());
-                stream = null;
-            }
-            video.srcObject = null;
-            statusMsg.textContent = "Webcam parada";
-            startBtn.style.display = "inline-block";
-            stopBtn.style.display = "none";
-            countEl.textContent = "0";
-            entradasEl.textContent = "0";
-            saidasEl.textContent = "0";
-            timeEl.textContent = "0 min";
-            badgeEl.textContent = "—";
-            badgeEl.style.background = "#333";
-            badgeEl.style.color = "#999";
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        try {
+            const res = await fetch("/detect", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: dataUrl }),
+            });
+            const data = await res.json();
+            const num = data.count || 0;
 
-        startBtn.addEventListener("click", startCamera);
-        stopBtn.addEventListener("click", stopCamera);
-    </script>
+            countEl.textContent = num;
+            entradasEl.textContent = data.entradas || 0;
+            saidasEl.textContent = data.saidas || 0;
+            timeEl.textContent = (num * TEMPO_POR_PESSOA) + " min";
+            tempoRealEl.textContent = data.tempo_real_medio != null ? data.tempo_real_medio + "min" : "—";
+
+            const status = getStatus(num);
+            badgeEl.textContent = status.label.toUpperCase();
+            badgeEl.className = "status-badge " + status.cls;
+
+            const pct = Math.min((num / LIMIAR_MEDIA) * 100, 100);
+            progressFill.style.width = pct + "%";
+            progressFill.style.background = status.color;
+
+            drawOverlay(data, video.videoWidth, video.videoHeight);
+        } catch (err) {
+            console.error(err);
+        }
+        animFrame = requestAnimationFrame(sendFrame);
+    }
+
+    async function startCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+            video.srcObject = stream;
+            await video.play();
+            liveDot.className = "status-dot green";
+            statusMsg.textContent = "Webcam ativa — monitorando";
+            startBtn.style.display = "none";
+            stopBtn.style.display = "inline-block";
+            sending = true;
+            sendFrame();
+        } catch (err) {
+            statusMsg.textContent = "Erro ao acessar webcam: " + err.message;
+        }
+    }
+
+    function stopCamera() {
+        sending = false;
+        if (animFrame) cancelAnimationFrame(animFrame);
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+            stream = null;
+        }
+        video.srcObject = null;
+        liveDot.className = "status-dot";
+        statusMsg.textContent = "Webcam parada";
+        startBtn.style.display = "inline-block";
+        stopBtn.style.display = "none";
+        countEl.textContent = "0";
+        entradasEl.textContent = "0";
+        saidasEl.textContent = "0";
+        timeEl.textContent = "0 min";
+        tempoRealEl.textContent = "—";
+        badgeEl.textContent = "—";
+        badgeEl.className = "status-badge";
+        progressFill.style.width = "0%";
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    startBtn.addEventListener("click", startCamera);
+    stopBtn.addEventListener("click", stopCamera);
+</script>
 </body>
 </html>
