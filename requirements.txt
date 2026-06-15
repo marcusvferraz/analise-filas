@@ -2,4 +2,3 @@ flask
 opencv-python
 ultralytics
 numpy
-pymysql

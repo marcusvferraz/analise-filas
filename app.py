@@ -24,13 +24,7 @@ pessoa_entrada = {}
 soma_tempos_reais = 0.0
 total_saidas_tracked = 0
 
-try:
-    db.criar_tabela()
-    db_disponivel = True
-    print("[DB] MySQL conectado - analise_filas pronto")
-except Exception as e:
-    db_disponivel = False
-    print(f"[DB] MySQL indisponivel: {e}")
+db.criar_tabela()
 
 
 @app.route("/")
@@ -104,7 +98,7 @@ def detect():
     # Save metrics every 10 detect calls
     num_pessoas = len(ids_dentro)
     save_counter += 1
-    if db_disponivel and save_counter >= 10:
+    if save_counter >= 10:
         save_counter = 0
         try:
             db.salvar_metrica(num_pessoas, num_pessoas * 2, entry_count, exit_count, tempo_real_medio)
@@ -130,8 +124,6 @@ def historico():
 
 @app.route("/api/historico")
 def api_historico():
-    if not db_disponivel:
-        return jsonify({"erro": "Banco de dados indisponivel"}), 503
     try:
         pagina = request.args.get("pagina", 1, type=int)
         por_pagina = request.args.get("por_pagina", 25, type=int)
@@ -150,8 +142,6 @@ def api_historico():
 
 @app.route("/api/estatisticas")
 def api_estatisticas():
-    if not db_disponivel:
-        return jsonify({"erro": "Banco de dados indisponivel"}), 503
     try:
         dados = db.estatisticas()
         return jsonify(dados)
