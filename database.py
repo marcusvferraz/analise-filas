@@ -49,15 +49,26 @@ def salvar_metrica(quantidade, tempo_estimado, entradas, saidas, tempo_real_medi
     conn.close()
 
 
-def listar_historico(limite=500):
+def listar_historico(pagina=1, por_pagina=25):
     conn = get_conn()
+    offset = (pagina - 1) * por_pagina
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT * FROM historico_filas ORDER BY created_at DESC LIMIT %s", (limite,)
+            "SELECT * FROM historico_filas ORDER BY created_at DESC LIMIT %s OFFSET %s",
+            (por_pagina, offset),
         )
         rows = cur.fetchall()
     conn.close()
     return rows
+
+
+def contar_historico():
+    conn = get_conn()
+    with conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) AS total FROM historico_filas")
+        total = cur.fetchone()["total"]
+    conn.close()
+    return total
 
 
 def estatisticas():

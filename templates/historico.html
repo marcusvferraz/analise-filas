@@ -79,6 +79,28 @@
         tr:hover td { background: #1a1a1a; }
         .loading { color: #555; font-size: 14px; margin-top: 40px; }
         .error-msg { color: #ef4444; font-size: 14px; margin-top: 20px; }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            color: #ccc;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .pagination button:hover { background: #2a2a2a; }
+        .pagination button:disabled { opacity: 0.4; cursor: default; }
+        .pagination button.active { background: #22c55e; color: #000; border-color: #22c55e; font-weight: 700; }
+        .pagination .info { color: #666; font-size: 12px; margin: 0 8px; }
     </style>
 </head>
 <body>
@@ -104,23 +126,70 @@
             <tbody></tbody>
         </table>
     </div>
+    <div class="pagination" id="paginacao"></div>
     <div class="loading" id="loading">Carregando...</div>
 
     <script>
-        async function carregar() {
-            try {
-                const [hist, stats] = await Promise.all([
-                    fetch("/api/historico").then(r => r.json()),
-                    fetch("/api/estatisticas").then(r => r.json()),
-                ]);
+        let paginaAtual = 1;
 
-                if (hist.erro || stats.erro) {
-                    document.getElementById("loading").textContent = "Erro: " + (hist.erro || stats.erro);
+        async function carregarTabela(pagina) {
+            try {
+                document.getElementById("loading").style.display = "block";
+                document.getElementById("loading").textContent = "Carregando...";
+                document.getElementById("paginacao").innerHTML = "";
+
+                const res = await fetch(`/api/historico?pagina=${pagina}&por_pagina=25`);
+                const hist = await res.json();
+
+                if (hist.erro) {
+                    document.getElementById("loading").textContent = "Erro: " + hist.erro;
                     document.getElementById("loading").className = "error-msg";
                     return;
                 }
 
                 document.getElementById("loading").style.display = "none";
+                paginaAtual = hist.pagina;
+
+                const tbody = document.querySelector("#tabela tbody");
+                tbody.innerHTML = hist.dados.map(h => {
+                    const tempoReal = h.tempo_real_medio != null ? h.tempo_real_medio + "min" : "—";
+                    return `<tr>
+                        <td>${h.id}</td>
+                        <td>${h.quantidade}</td>
+                        <td>${h.tempo_estimado}min</td>
+                        <td>${tempoReal}</td>
+                        <td>${h.entradas}</td>
+                        <td>${h.saidas}</td>
+                        <td>${new Date(h.created_at).toLocaleString("pt-BR")}</td>
+                    </tr>`;
+                }).join("");
+
+                // Pagination
+                const tp = hist.total_paginas;
+                const p = hist.pagina;
+                let html = `<button onclick="carregarTabela(1)" ${p <= 1 ? "disabled" : ""}>&laquo;</button>`;
+                html += `<button onclick="carregarTabela(${p - 1})" ${p <= 1 ? "disabled" : ""}>&lsaquo;</button>`;
+                html += `<span class="info">${p} de ${tp} (${hist.total} registros)</span>`;
+                html += `<button onclick="carregarTabela(${p + 1})" ${p >= tp ? "disabled" : ""}>&rsaquo;</button>`;
+                html += `<button onclick="carregarTabela(${tp})" ${p >= tp ? "disabled" : ""}>&raquo;</button>`;
+                document.getElementById("paginacao").innerHTML = html;
+
+            } catch (err) {
+                document.getElementById("loading").textContent = "Erro: " + err.message;
+                document.getElementById("loading").className = "error-msg";
+            }
+        }
+
+        async function carregar() {
+            try {
+                const statsRes = await fetch("/api/estatisticas");
+                const stats = await statsRes.json();
+
+                if (stats.erro) {
+                    document.getElementById("loading").textContent = "Erro: " + stats.erro;
+                    document.getElementById("loading").className = "error-msg";
+                    return;
+                }
 
                 const mediaReal = stats.media_tempo_real ? stats.media_tempo_real + "min" : "—";
 
@@ -181,22 +250,10 @@
                     },
                 });
 
-                const tbody = document.querySelector("#tabela tbody");
-                tbody.innerHTML = hist.map(h => {
-                    const tempoReal = h.tempo_real_medio != null ? h.tempo_real_medio + "min" : "—";
-                    return `<tr>
-                        <td>${h.id}</td>
-                        <td>${h.quantidade}</td>
-                        <td>${h.tempo_estimado}min</td>
-                        <td>${tempoReal}</td>
-                        <td>${h.entradas}</td>
-                        <td>${h.saidas}</td>
-                        <td>${new Date(h.created_at).toLocaleString("pt-BR")}</td>
-                    </tr>`;
-                }).join("");
+                carregarTabela(1);
 
             } catch (err) {
-                document.getElementById("loading").textContent = "Erro ao carregar dados: " + err.message;
+                document.getElementById("loading").textContent = "Erro: " + err.message;
                 document.getElementById("loading").className = "error-msg";
             }
         }
