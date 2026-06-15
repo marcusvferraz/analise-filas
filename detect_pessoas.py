@@ -70,6 +70,7 @@ def main():
         if not ret:
             break
 
+        frame = cv2.convertScaleAbs(frame, alpha=1.2, beta=40)
         h, w = frame.shape[:2]
         entrada_x = int(w * ENTRADA_X)
         saida_x = int(w * SAIDA_X)

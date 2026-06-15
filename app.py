@@ -52,6 +52,7 @@ def detect():
     img_bytes = base64.b64decode(data["image"].split(",")[1])
     nparr = np.frombuffer(img_bytes, np.uint8)
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    frame = cv2.convertScaleAbs(frame, alpha=1.2, beta=40)
     h, w = frame.shape[:2]
     entrada_x = int(w * ENTRADA_X)
     saida_x = int(w * SAIDA_X)
